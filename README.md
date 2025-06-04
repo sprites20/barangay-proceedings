@@ -35,7 +35,7 @@ npm -v
 1. Clone the repository or download the source code:
 
 ```bash
-git clone https://github.com/your-username/barangay-proceedings.git
+git clone https://github.com/sprites20/barangay-proceedings.git
 cd barangay-proceedings
 ```
 
