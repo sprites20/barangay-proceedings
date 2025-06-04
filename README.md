@@ -1,93 +1,70 @@
-# Barangay Proceedings
+# Getting Started with Create React App
 
-A web application to manage and record barangay (local government unit) proceedings efficiently and digitally.
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Features
+## Available Scripts
 
-- Record meeting agendas and resolutions
-- Manage official proceedings and files
-- Track participant attendance
-- Secure login system for barangay officials
+In the project directory, you can run:
 
-## Tech Stack
+### `npm start`
 
-- Frontend: React (or specify if you use something else)
-- Backend: Node.js / Express (if applicable)
-- Styling: CSS / Tailwind / Bootstrap (specify your stack)
-- Package Manager: NPM
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-## Getting Started
+The page will reload when you make changes.\
+You may also see any lint errors in the console.
 
-### Prerequisites
+### `npm test`
 
-- Node.js and npm installed  
-  Download from https://nodejs.org/en/download
+Launches the test runner in the interactive watch mode.\
+See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-Verify installation:
+### `npm run build`
 
-```bash
-node -v
-npm -v
-```
+Builds the app for production to the `build` folder.\
+It correctly bundles React in production mode and optimizes the build for the best performance.
 
-### Installation
+The build is minified and the filenames include the hashes.\
+Your app is ready to be deployed!
 
-1. Clone the repository or download the source code:
+See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-```bash
-git clone https://github.com/your-username/barangay-proceedings.git
-cd barangay-proceedings
-```
+### `npm run eject`
 
-2. Install dependencies:
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-```bash
-npm install
-```
+If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-### Running the Application
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
 
-Start the development server:
+You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
 
-- For React apps:
+## Learn More
 
-```bash
-npm start
-```
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-- For Next.js apps:
+To learn React, check out the [React documentation](https://reactjs.org/).
 
-```bash
-npm run dev
-```
+### Code Splitting
 
-The app should be accessible at `http://localhost:3000`.
+This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
 
-### Building for Production
+### Analyzing the Bundle Size
 
-```bash
-npm run build
-```
+This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
 
-### Folder Structure
+### Making a Progressive Web App
 
-```
-barangay-proceedings/
-├── public/          # Static assets
-├── src/             # Source code
-│   ├── components/  # React components
-│   ├── pages/       # Pages or views
-│   └── App.js       # Main app entry
-├── package.json     # Project metadata and scripts
-└── README.md        # This file
-```
+This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
 
-## Contributing
+### Advanced Configuration
 
-Feel free to fork the repository and submit pull requests.
+This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
 
-## License
+### Deployment
 
-This project is licensed under the MIT License.
+This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
 
----
+### `npm run build` fails to minify
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
