@@ -1,0 +1,191 @@
+.proceedings-container {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+.proceedings-list {
+  flex: 1;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.proceedings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.proceedings-scroll-box {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.proceeding-item {
+  padding: 15px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.proceeding-item:hover {
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.proceeding-item.selected {
+  border-color: #007bff;
+  background-color: #f8f9fa;
+}
+
+.proceeding-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.participant-count {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.proceeding-dates {
+  display: flex;
+  gap: 20px;
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.proceeding-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  background-color: #28a745;
+  color: white;
+}
+
+.proceeding-form-container,
+.proceeding-details {
+  flex: 1;
+  max-width: 500px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+}
+
+.proceeding-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.participants-section {
+  border: 1px solid #ddd;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 15px;
+}
+
+.participant-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.add-participant-btn {
+  padding: 8px 12px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.participant-entry {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.participant-entry input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.registered-participant {
+  padding: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.participants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.participant-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.remove-participant-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 10px;
+    font-size: 0.85rem;
+}
+
+.remove-participant-btn:hover {
+    background-color: #c82333;
+}
+
+.participant-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.unregistered-participant-inputs {
+    display: flex;
+    gap: 5px;
+    flex-grow: 1;
+}
+
+.unregistered-participant-inputs input {
+    flex-grow: 1;
+}
+
+.submit-proceeding-btn {
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+.submit-proceeding-btn:hover {
+  background-color: #0056b3;
+}
