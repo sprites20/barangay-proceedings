@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import './Proceedings.css';
 
 
-const Proceedings = ({ caseId, onClose }) => {
-  const [proceedings, setProceedings] = useState([]);
+const Proceedings = ({ socket, caseId, onClose, proceedings_temp }) => {
+  const [proceedings, setProceedings] = useState(proceedings_temp);
   const [selectedProceeding, setSelectedProceeding] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -16,13 +16,19 @@ const Proceedings = ({ caseId, onClose }) => {
 	startTime: '',
 	endTime: ''
   });
-  const [registeredParticipants] = useState([
+  const [peopleFormData, setPeopleFormData] = useState({
+    name: '',
+    role: '',
+  });
+  const [registeredParticipants, setRegisteredParticipants] = useState([
     { id: 1, name: 'Officer 1', role: 'Barangay Captain' },
     { id: 2, name: 'Officer 2', role: 'Secretary' },
     // Add more registered participants
   ]);
-  
-
+  //console.log(caseId);
+  useEffect(() => {
+    setProceedings(proceedings_temp);
+  }, [JSON.stringify(proceedings_temp)]);
   const resetForm = () => {
     setFormData({
       summary: '',
@@ -79,30 +85,46 @@ const Proceedings = ({ caseId, onClose }) => {
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
+  const handlePeopleSubmit = (e) => {
+    e.preventDefault(); // prevents reload
+    if (peopleFormData.name && peopleFormData.role) {
+      setRegisteredParticipants((prev) => [
+        ...prev,
+        { id: peopleFormData.name, name: peopleFormData.name, role: peopleFormData.role },
+      ]);
+      setPeopleFormData({ name: "", role: "" }); // Clear form
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
+  
     const proceeding = {
-      id: isEditing ? formData.id : Date.now(),
+      caseId: caseId,
+      id: isEditing ? formData.id : String(Date.now()) + caseId,
       summary: formData.summary,
       content: formData.content,
       participants: formData.participants,
       startTime: formData.startTime,
       endTime: formData.endTime,
-	  date: formData.date,
+	    date: formData.date,
       dateCreated: isEditing ? formData.dateCreated : new Date().toISOString(),
       dateUpdated: new Date().toISOString(),
       status: 'ongoing',
     };
 
+    //If editing update to the server
+    //If not just create
+    
     if (isEditing) {
       setProceedings((prev) =>
         prev.map((p) => (p.id === proceeding.id ? proceeding : p))
       );
+      socket.emit('query_db', { query_id: 4, data: proceeding });
     } else {
       setProceedings((prev) => [...prev, proceeding]);
+      socket.emit('query_db', { query_id: 3, data: proceeding });
     }
 
     resetForm();
@@ -215,9 +237,43 @@ const Proceedings = ({ caseId, onClose }) => {
 				onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
 			  />
 			</div>
+      <div className="register-people-section">
+  <h3>Register People</h3>
+
+  <div className="form-group">
+    <label>Person Name:</label>
+    <input
+      type="text"
+      name="name"
+      placeholder="Full Name"
+      value={peopleFormData.name}
+      onChange={(e) =>
+        setPeopleFormData({ ...peopleFormData, name: e.target.value })
+      }
+      
+    />
+  </div>
+
+  <div className="form-group">
+    <label>Role: </label>
+    <input
+      type="text"
+      name="role"
+      placeholder="Role"
+      value={peopleFormData.role}
+      onChange={(e) =>
+        setPeopleFormData({ ...peopleFormData, role: e.target.value })
+      }
+      
+    />
+  </div>
+
+  <button onClick={handlePeopleSubmit}>Register</button>
+</div>
 
             <div className="participants-section">
               <h3>Participants</h3>
+
               <div className="participant-buttons">
                 <button
                   type="button"
@@ -226,6 +282,7 @@ const Proceedings = ({ caseId, onClose }) => {
                 >
                   Add Registered Participant
                 </button>
+
                 <button
                   type="button"
                   onClick={() => handleAddParticipant('unregistered')}
@@ -308,7 +365,7 @@ const Proceedings = ({ caseId, onClose }) => {
         <div className="proceeding-details">
           <h2>{selectedProceeding.summary}</h2>
 
-                    <div className="detail-group">
+          <div className="detail-group">
             <label>Status:</label>
             <span className="status-badge">{selectedProceeding.status}</span>
           </div>
@@ -331,6 +388,10 @@ const Proceedings = ({ caseId, onClose }) => {
           <div className="detail-group">
             <label>Content:</label>
             <p>{selectedProceeding.content}</p>
+          </div>
+          <div className="detail-group">
+            <label>Schedule:</label>
+            <p>{selectedProceeding.date} {selectedProceeding.startTime} to {selectedProceeding.endTime}</p>
           </div>
           <div className="detail-group">
             <label>Participants:</label>

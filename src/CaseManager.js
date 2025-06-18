@@ -10,13 +10,23 @@ const CaseManager = () => {
   const [selectedCase, setSelectedCase] = useState(null);
   const [showProceedings, setShowProceedings] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [proceedings, setProceedings] = useState([]);
   const socket = io('http://localhost:5000');
   const [newCase, setNewCase] = useState({
+    case_id: null,
     title: '',
     description: '',
     priority: 'medium',
     status: 'open'
   });
+  const [recievedCase, setRecievedCase] = useState({
+    case_id: null,
+    title: '',
+    description: '',
+    priority:'medium',
+    status: 'open'
+  });
+
 
   // Status colors
   const statusColors = {
@@ -44,82 +54,106 @@ const CaseManager = () => {
       [name]: value
     }));
   };
-
+  
+  const processes = {
+    1: (data) => {
+      console.log('Received case creation response:', data);
+      setRecievedCase(data);
+      setCases(prev => [...prev, data]);
+      console.log('New case created:', data);
+      setNewCase({
+          title: '',
+          description: '',
+          priority: 'medium',
+          status: 'open'
+      });
+      setShowCreateForm(false);
+    },
+    2: (data) => {
+      setCases(data);
+      console.log('Received cases:', data);
+    },
+    6: (data) => {
+      console.log('Received proceedings:', data);
+      setProceedings(data);
+    },
+  }
+  const processMessage = (data) => {
+    if (processes[data.query_id]) {
+      processes[data.query_id](data.data);
+    }
+    else {
+      console.log('Unknown query_id:', data.query_id);
+    }
+  }
+  var fetchedCases = false;
   useEffect(() => {
+    const handler = (data) => {
+      console.log('Received message:', data);
+      processMessage(data);
+    };
+  
     socket.on('connect', () => {
       console.log('Connected to server');
+      console.log('Connected with ID:', socket.id);
+      socket.emit('register_user', { username: 'user' });
+  
+      if (!fetchedCases) {
+        socket.emit('query_db', { query_id: 2, data: {} });
+        fetchedCases = true;
+        console.log('Emitted query_db event');
+      }
     });
-    socket.on('connect', () => {
-      console.log('Connected to server');
+  
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
     });
-    socket.on('server_message', (message) => {
-      console.log('Received message:', message);
-    });
+  
+    // ✅ Use the same handler reference
+    socket.on('server_message', handler);
+  
     return () => {
-      socket.off('server_message');
+      socket.off('server_message', handler); // ✅ now actually removes it
     };
   }, []);
+  
 
-
-    useEffect(() => {
-        const fetchCases = async () => {
-            try {
-                const response = await fetch('/api/cases'); // Adjust URL as needed
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                setCases(data);
-            } catch (error) {
-                console.error("Error fetching cases:", error);
-            }
-        };
-
-        fetchCases();
-    }, []); // Empty dependency array means this runs once on mount
+    const fetchProceedings = async () => {
+      console.log('Fetching proceedings for case:', selectedCase.case_id);
+      socket.emit('query_db', { query_id: 6, data: { case_id: selectedCase.case_id } });
+    };
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch('/api/cases', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(newCase), // newCase state holds form data
-            });
-    
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-    
-            const createdCase = await response.json();
-            setCases([...cases, createdCase]); // Add the new case to the list
-            setNewCase({ title: '', description: '', priority: 'low', status: 'open'});
-            setShowCreateForm(false);
+          // Here you would typically make an API call to create the case
+          const createdCase = {
+            ...newCase,
+            status: 'open',
+          };
+          
+          socket.emit('query_db', { query_id: 1, data: createdCase});
+          console.log('Emitted query_db event', createdCase);
+
+          
         } catch (error) {
             console.error("Error creating case:", error);
-
-            e.preventDefault();
-            // Here you would typically make an API call to create the case
-            const createdCase = {
-                ...newCase,
-                case_id: Date.now(), // Temporary ID, should come from backend
-                created_at: new Date().toISOString(),
-            };
-            setCases(prev => [...prev, createdCase]);
-            console.log('New case created:', createdCase);
-            socket.emit('query_db', { type: 1, data: createdCase});
-            console.log('Emitted query_db event');
-            setNewCase({
-                title: '',
-                description: '',
-                priority: 'medium',
-                status: 'open'
-            });
-            setShowCreateForm(false);
-            };
+        }  
     };
-
+    const handleDeleteCase = async (caseItem) => {
+      try {
+        console.log('Deleting case:', caseItem);
+        
+        // (Optional) Send to backend
+        await socket.emit('query_db', { query_id: 8, data: { case_id: caseItem.case_id } });
+        
+        // Optimistically update the UI
+        setCases(prevCases => prevCases.filter(c => c.case_id !== caseItem.case_id));
+        
+      } catch (error) {
+        console.error("Error deleting case:", error);
+      }
+    }
+    
   return (
     <div className="case-manager">
       <div className="case-list">
@@ -150,7 +184,11 @@ const CaseManager = () => {
                   ? `${caseItem.description.substring(0, 100)}...`
                   : caseItem.description}
               </p>
+              <button className="case-delete-button" onClick={() => handleDeleteCase(caseItem)} >
+                Delete
+              </button>
             </div>
+
           ))}
         </div>
       </div>
@@ -225,7 +263,11 @@ const CaseManager = () => {
             </div>
             <button 
               className="show-proceedings-btn"
-              onClick={() => setShowProceedings(true)}
+              onClick={async () => {
+                console.log("Button clicked");
+                await fetchProceedings(); // Wait for data
+                setShowProceedings(true); // Then show the component
+              }}
             >
               Show Proceedings
             </button>
@@ -234,8 +276,10 @@ const CaseManager = () => {
       )}
       {showProceedings && selectedCase && (
         <Proceedings 
+          socket={socket}
           caseId={selectedCase.case_id} 
-          onClose={() => setShowProceedings(false)} 
+          onClose={() => setShowProceedings(false)}
+          proceedings_temp={proceedings}
         />
       )}
     </div>

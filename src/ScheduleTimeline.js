@@ -1,14 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './ScheduleTimeLine.css';
+import { io } from 'socket.io-client';
+
 
 const ScheduleTimeLine = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [deleteMode, setDeleteMode] = useState(false);
-  const [people, setPeople] = useState(['Person 1', 'Person 2']);
-
+  const [people, setPeople] = useState([
+    { name: 'Person 1', hidden: false },
+  ]);
+  const socket = io('http://localhost:5000');
+  const processes = {
+    
+  }
+  const processMessage = (data) => {
+    if (processes[data.query_id]) {
+      processes[data.query_id](data.data);
+    }
+    else {
+      console.log('Unknown query_id:', data.query_id);
+    }
+  }
+  
+  useEffect(() => {
+    const handler = (data) => {
+      console.log('Received message:', data);
+      processMessage(data);
+    };
+  
+    socket.on('connect', () => {
+      console.log('Connected to server');
+      console.log('Connected with ID:', socket.id);
+      socket.emit('register_user', { username: 'user' });
+  
+      
+    });
+  
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+    });
+  
+    // ✅ Use the same handler reference
+    socket.on('server_message', handler);
+  
+    return () => {
+      socket.off('server_message', handler); // ✅ now actually removes it
+    };
+  }, []);
   // General events that can be reused
   const [events] = useState([
     {
@@ -27,7 +68,6 @@ const ScheduleTimeLine = () => {
 
   const [timelineEvents, setTimelineEvents] = useState({
     'Person 1': [],
-    'Person 2': []
   });
 
   const handleDateChange = (date) => {
@@ -36,8 +76,8 @@ const ScheduleTimeLine = () => {
   };
 
   // Filter timeline events for the selected date
-  const getFilteredTimelineEvents = (person) => {
-    return timelineEvents[person].filter(event => {
+  const getFilteredTimelineEvents = (personName) => {
+    return timelineEvents[personName].filter(event => {
       const eventDate = new Date(event.startDateTime);
       return (
         eventDate.getFullYear() === selectedDate.getFullYear() &&
@@ -81,8 +121,6 @@ const ScheduleTimeLine = () => {
       endDateTime: endDate.toISOString()
     };
 
-    
-
     setTimelineEvents({
       ...timelineEvents,
       [selectedEvent.person]: timelineEvents[selectedEvent.person].map(event =>
@@ -97,41 +135,41 @@ const ScheduleTimeLine = () => {
     if (!selectedEvent) return;
 
     // Handle empty or invalid inputs
-    const name = newName === '' || isNaN(newName)? 'Untitled' : newName;
+    const name = newName === '' || isNaN(newName) ? 'Untitled' : newName;
     const updatedEvent = {
       ...selectedEvent,
       title: newName,
     };
 
     setTimelineEvents({
-     ...timelineEvents,
+      ...timelineEvents,
       [selectedEvent.person]: timelineEvents[selectedEvent.person].map(event =>
-        event.id === selectedEvent.id? updatedEvent : event
+        event.id === selectedEvent.id ? updatedEvent : event
       )
     });
 
     setSelectedEvent(updatedEvent);
   };
 
-  const handleDrop = (e, person) => {
+  const handleDrop = (e, personName) => {
     e.preventDefault();
     const eventId = e.dataTransfer.getData('eventId');
     const eventType = e.dataTransfer.getData('eventType');
     const originalPerson = e.dataTransfer.getData('person');
-    
+
     // Calculate position in timeline (rounded to 5 minutes)
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const totalMinutes = Math.floor((x / 100) * 60);
     const hours = Math.floor(totalMinutes / 60);
     const minutes = Math.round(totalMinutes % 60 / 5) * 5;
-    
+
     if (eventType === 'template') {
       const templateEvent = events.find(event => event.id === eventId);
       if (templateEvent) {
         const startDate = new Date(selectedDate);
         startDate.setHours(hours, minutes, 0, 0);
-        
+
         const endDate = new Date(startDate);
         endDate.setMinutes(endDate.getMinutes() + templateEvent.duration);
 
@@ -140,12 +178,14 @@ const ScheduleTimeLine = () => {
           title: templateEvent.title,
           startDateTime: startDate.toISOString(),
           endDateTime: endDate.toISOString(),
-          person: person,
+          person: personName,
           duration: templateEvent.duration
         };
+        
+        //Emit the new schedule
 
         // Find and remove any existing event of same type for this person on this date
-        const updatedEvents = timelineEvents[person].filter(event => {
+        const updatedEvents = (timelineEvents[personName] || []).filter(event => {
           const eventDate = new Date(event.startDateTime);
           return !(
             event.title === templateEvent.title &&
@@ -155,19 +195,19 @@ const ScheduleTimeLine = () => {
             eventDate.getDate() === selectedDate.getDate()
           );
         });
-        
+
         setTimelineEvents({
           ...timelineEvents,
-          [person]: [...updatedEvents, newEvent]
+          [personName]: [...updatedEvents, newEvent]
         });
       }
     } else if (eventType === 'scheduled') {
       // Handle moving existing events
-      const existingEvent = timelineEvents[originalPerson].find(e => e.id === eventId);
+      const existingEvent = (timelineEvents[originalPerson] || []).find(e => e.id === eventId);
       if (existingEvent) {
         const startDate = new Date(selectedDate);
         startDate.setHours(hours, minutes, 0, 0);
-        
+
         const endDate = new Date(startDate);
         endDate.setMinutes(endDate.getMinutes() + existingEvent.duration);
 
@@ -175,27 +215,27 @@ const ScheduleTimeLine = () => {
           ...existingEvent,
           startDateTime: startDate.toISOString(),
           endDateTime: endDate.toISOString(),
-          person: person
+          person: personName
         };
 
         // Remove from original person and add to new person
-        const sourceEvents = timelineEvents[originalPerson].filter(e => e.id !== eventId);
-        const targetEvents = person === originalPerson ? sourceEvents : timelineEvents[person];
+        const sourceEvents = (timelineEvents[originalPerson] || []).filter(e => e.id !== eventId);
+        const targetEvents = personName === originalPerson ? sourceEvents : (timelineEvents[personName] || []);
 
         setTimelineEvents({
           ...timelineEvents,
           [originalPerson]: sourceEvents,
-          [person]: [...targetEvents, updatedEvent]
+          [personName]: [...targetEvents, updatedEvent]
         });
       }
     }
   };
 
-  const handleDeleteEvent = (eventId, person) => {
+  const handleDeleteEvent = (eventId, personName) => {
     if (deleteMode) {
       setTimelineEvents({
         ...timelineEvents,
-        [person]: timelineEvents[person].filter(event => event.id !== eventId)
+        [personName]: (timelineEvents[personName] || []).filter(event => event.id !== eventId)
       });
       if (selectedEvent?.id === eventId) {
         setSelectedEvent(null);
@@ -208,9 +248,9 @@ const ScheduleTimeLine = () => {
     duration: 60,
     days: [],
     startTime: '12:00', // Default start time
-    endTime: '13:00',   // Default end time
-    weeksToApply: 4,    // Default weeks to apply
-    specificDates: []   // Specific dates for events like holidays
+    endTime: '13:00',    // Default end time
+    weeksToApply: 4,     // Default weeks to apply
+    specificDates: []    // Specific dates for events like holidays
   });
 
   // Function to handle changes in recurring event form
@@ -241,67 +281,67 @@ const ScheduleTimeLine = () => {
   };
 
   const applyRecurringEventToAll = () => {
-    people.forEach(person => applyRecurringEvent(person));
+    people.forEach(person => applyRecurringEvent(person.name));
   };
 
   // Function to apply recurring events
-  const applyRecurringEvent = (person) => {
+  const applyRecurringEvent = (personName) => {
     const { weeksToApply, specificDates } = recurringEvent;
     const newEvents = [];
-  
+
     // Apply for specified weeks
     for (let week = 0; week < weeksToApply; week++) {
       recurringEvent.days.forEach(day => {
         const startDate = new Date(selectedDate);
         startDate.setDate(startDate.getDate() + ((7 + day - startDate.getDay()) % 7) + (week * 7));
-        
+
         const [startHours, startMinutes] = recurringEvent.startTime.split(':').map(Number);
         startDate.setHours(startHours, startMinutes, 0, 0);
-    
+
         const endDate = new Date(startDate);
         const [endHours, endMinutes] = recurringEvent.endTime.split(':').map(Number);
         endDate.setHours(endHours, endMinutes, 0, 0);
-    
+
         newEvents.push({
           id: `${Date.now()}_${Math.random()}`,
           title: recurringEvent.title,
           startDateTime: startDate.toISOString(),
           endDateTime: endDate.toISOString(),
-          person: person,
+          person: personName,
           duration: (endDate - startDate) / (1000 * 60) // Calculate duration in minutes
         });
       });
     }
-  
+
     // Apply for specific dates
     specificDates.forEach(date => {
       const startDate = new Date(date);
       const [startHours, startMinutes] = recurringEvent.startTime.split(':').map(Number);
       startDate.setHours(startHours, startMinutes, 0, 0);
-    
+
       const endDate = new Date(startDate);
       const [endHours, endMinutes] = recurringEvent.endTime.split(':').map(Number);
       endDate.setHours(endHours, endMinutes, 0, 0);
-    
+
       newEvents.push({
         id: `${Date.now()}_${Math.random()}`,
         title: recurringEvent.title,
         startDateTime: startDate.toISOString(),
         endDateTime: endDate.toISOString(),
-        person: person,
+        person: personName,
         duration: (endDate - startDate) / (1000 * 60) // Calculate duration in minutes
       });
     });
-  
+
     setTimelineEvents(prevTimelineEvents => ({
       ...prevTimelineEvents,
-      [person]: [...(prevTimelineEvents[person] || []), ...newEvents]
+      [personName]: [...(prevTimelineEvents[personName] || []), ...newEvents]
     }));
-};
+  };
 
   const addPerson = () => {
     const newPersonName = `Person ${people.length + 1}`;
-    setPeople([...people, newPersonName]);
+    setPeople([...people, { name: newPersonName, hidden: true }]);
     setTimelineEvents({
       ...timelineEvents,
       [newPersonName]: [] // Initialize empty array for new person's events
@@ -310,13 +350,13 @@ const ScheduleTimeLine = () => {
 
   const renamePerson = (index, newName) => {
     const updatedPeople = [...people];
-    const oldName = updatedPeople[index];
-    updatedPeople[index] = newName;
-  
+    const oldName = updatedPeople[index].name;
+    updatedPeople[index].name = newName;
+
     const updatedTimelineEvents = { ...timelineEvents };
     updatedTimelineEvents[newName] = updatedTimelineEvents[oldName];
     delete updatedTimelineEvents[oldName];
-  
+
     setPeople(updatedPeople);
     setTimelineEvents(updatedTimelineEvents);
   };
@@ -324,9 +364,9 @@ const ScheduleTimeLine = () => {
   const deletePerson = (index) => {
     const personToDelete = people[index];
     const updatedPeople = people.filter((_, i) => i !== index);
-    const updatedTimelineEvents = {...timelineEvents};
-    delete updatedTimelineEvents[personToDelete];
-    
+    const updatedTimelineEvents = { ...timelineEvents };
+    delete updatedTimelineEvents[personToDelete.name]; // Access the name property here
+
     setPeople(updatedPeople);
     setTimelineEvents(updatedTimelineEvents);
   };
@@ -335,18 +375,18 @@ const ScheduleTimeLine = () => {
     // Convert time strings to hours and minutes
     const [startHours, startMinutes] = startTime.split(':').map(Number);
     const [endHours, endMinutes] = endTime.split(':').map(Number);
-  
+
     // Create start date
     const startDate = new Date(date);
     startDate.setHours(startHours, startMinutes, 0, 0);
-  
+
     // Create end date
     const endDate = new Date(date);
     endDate.setHours(endHours, endMinutes, 0, 0);
-  
+
     // Calculate duration in minutes
     const duration = (endDate - startDate) / (1000 * 60);
-  
+
     // Create the event object
     const newEvent = {
       id: `${Date.now()}_${Math.random()}`,
@@ -356,13 +396,13 @@ const ScheduleTimeLine = () => {
       person,
       duration
     };
-  
+
     // Add to timeline events
     setTimelineEvents(prevTimelineEvents => ({
       ...prevTimelineEvents,
       [person]: [...(prevTimelineEvents[person] || []), newEvent]
     }));
-  
+
     return newEvent;
   };
 
@@ -370,8 +410,8 @@ const ScheduleTimeLine = () => {
     title: '',
     date: new Date().toISOString().split('T')[0], // Default to today's date in YYYY-MM-DD format
     startTime: '09:00', // Default start time
-    endTime: '10:00',   // Default end time
-    person: people[0] || '' // Default to the first person
+    endTime: '10:00',    // Default end time
+    person: people.length > 0 ? people[0].name : '' // Default to the first person's name
   });
 
   const handleSingleEventChange = (e) => {
@@ -385,20 +425,20 @@ const ScheduleTimeLine = () => {
   const handleSingleEventSubmit = (e) => {
     e.preventDefault();
     if (!newSingleEvent.title || !newSingleEvent.person) {
-        alert('Please fill in event title and select a person.');
-        return;
+      alert('Please fill in event title and select a person.');
+      return;
     }
     createAndAddEvent(newSingleEvent);
     // Optionally reset the form after submission
     setNewSingleEvent({
-        title: '',
-        date: new Date().toISOString().split('T')[0],
-        startTime: '09:00',
-        endTime: '10:00',
-        person: people[0] || ''
+      title: '',
+      date: new Date().toISOString().split('T')[0],
+      startTime: '09:00',
+      endTime: '10:00',
+      person: people.length > 0 ? people[0].name : ''
     });
   };
-
+  const [editingName, setEditingName] = useState({});
   return (
     <div className="schedule-container">
       <div className="sidebar">
@@ -406,13 +446,47 @@ const ScheduleTimeLine = () => {
           <button className="add-person-button" onClick={addPerson}>Add Person</button>
           <div className="people-selection">
             {people.map((person, index) => (
-              <div key={index}>
+              <div key={person.name}> {/* Use person.name as key */}
                 <input
                   type="text"
-                  value={person}
-                  onChange={(e) => renamePerson(index, e.target.value)}
+                  value={editingName[index] ?? person.name}
+                  onChange={(e) =>
+                    setEditingName(prev => ({ ...prev, [index]: e.target.value }))
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.target.blur();
+                  }}
+                  onBlur={() => {
+                    const newName = editingName[index];
+                    if (newName && newName !== person.name) {
+                      renamePerson(index, newName);
+                    }
+
+                    // Clean up after rename or cancel
+                    setEditingName(prev => {
+                      const updated = { ...prev };
+                      delete updated[index];
+                      return updated;
+                    });
+                  }}
                 />
-                <button 
+                <button
+                  onClick={() => {
+                    // Toggle hidden state
+                    const updatedPeople = [...people];
+                    updatedPeople[index].hidden = !updatedPeople[index].hidden;
+                    setPeople(updatedPeople);
+                  }}
+                  className="hide-person-button" // Renamed button class for clarity
+                >
+                  {person.hidden ? 'Show' : 'Hide'}
+                </button>
+                <button
+                  className="update-person-button" // Renamed button class for clarity
+                >
+                  Update
+                </button>
+                <button
                   onClick={() => deletePerson(index)}
                   className="delete-person-button"
                 >
@@ -422,7 +496,7 @@ const ScheduleTimeLine = () => {
             ))}
           </div>
         </div>
-        <button onClick={applyRecurringEventToAll}>Apply Recurring Events to All</button>
+      
         <div className="calendar-container">
           <Calendar
             onChange={handleDateChange}
@@ -430,9 +504,9 @@ const ScheduleTimeLine = () => {
             className="custom-calendar"
           />
         </div>
-        
+
         <div className="controls">
-          <button 
+          <button
             className={`delete-mode ${deleteMode ? 'active' : ''}`}
             onClick={() => setDeleteMode(!deleteMode)}
           >
@@ -607,15 +681,15 @@ const ScheduleTimeLine = () => {
           </div>
           <div className="recurring-person-buttons">
             {people.map(person => (
-              <button 
-                key={person}
-                onClick={() => applyRecurringEvent(person)}
+              <button
+                key={person.name} // Use person.name as key
+                onClick={() => applyRecurringEvent(person.name)} // Pass person.name
                 className="apply-recurring-person-button"
               >
-                Apply to {person}
+                Apply to {person.name}
               </button>
             ))}
-            <button 
+            <button
               onClick={applyRecurringEventToAll}
               className="apply-recurring-button"
             >
@@ -624,50 +698,50 @@ const ScheduleTimeLine = () => {
           </div>
         </div>
         <div className="single-event-form">
-            <h3>Create Single Event</h3>
-            <form onSubmit={handleSingleEventSubmit}>
-                <input
-                    type="text"
-                    name="title"
-                    value={newSingleEvent.title}
-                    onChange={handleSingleEventChange}
-                    placeholder="Event Title"
-                    required
-                />
-                <input
-                    type="date"
-                    name="date"
-                    value={newSingleEvent.date}
-                    onChange={handleSingleEventChange}
-                    required
-                />
-                <input
-                    type="time"
-                    name="startTime"
-                    value={newSingleEvent.startTime}
-                    onChange={handleSingleEventChange}
-                    required
-                />
-                <input
-                    type="time"
-                    name="endTime"
-                    value={newSingleEvent.endTime}
-                    onChange={handleSingleEventChange}
-                    required
-                />
-                <select
-                    name="person"
-                    value={newSingleEvent.person}
-                    onChange={handleSingleEventChange}
-                    required
-                >
-                    <option value="">Select Person</option>
-                    {people.map(person => (
-                        <option key={person} value={person}>{person}</option>
-                    ))}
-                </select>
-                <button type="submit">Add Event</button>
-            </form>
+          <h3>Create Single Event</h3>
+          <form onSubmit={handleSingleEventSubmit}>
+            <input
+              type="text"
+              name="title"
+              value={newSingleEvent.title}
+              onChange={handleSingleEventChange}
+              placeholder="Event Title"
+              required
+            />
+            <input
+              type="date"
+              name="date"
+              value={newSingleEvent.date}
+              onChange={handleSingleEventChange}
+              required
+            />
+            <input
+              type="time"
+              name="startTime"
+              value={newSingleEvent.startTime}
+              onChange={handleSingleEventChange}
+              required
+            />
+            <input
+              type="time"
+              name="endTime"
+              value={newSingleEvent.endTime}
+              onChange={handleSingleEventChange}
+              required
+            />
+            <select
+              name="person"
+              value={newSingleEvent.person}
+              onChange={handleSingleEventChange}
+              required
+            >
+              <option value="">Select Person</option>
+              {people.map(person => (
+                <option key={person.name} value={person.name}>{person.name}</option> // Use person.name for value and display
+              ))}
+            </select>
+            <button type="submit">Add Event</button>
+          </form>
         </div>
       </div>
 
@@ -681,37 +755,37 @@ const ScheduleTimeLine = () => {
           ))}
         </div>
         <div className="timeline-tracks">
-          {people.map(person => ( // Use dynamic people state here
-            <div key={person} className="track">
-              <div className="track-header">{person}</div>
-              <div 
+          {people.filter(person => !person.hidden).map(person => ( // Filter hidden people
+            <div key={person.name} className="track"> {/* Use person.name as key */}
+              <div className="track-header">{person.name}</div> {/* Display person.name */}
+              <div
                 className="track-content"
                 onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, person)}
+                onDrop={(e) => handleDrop(e, person.name)} // Pass person.name
               >
-                {getFilteredTimelineEvents(person).map(event => (
-                  <div 
-                    key={event.id} 
+                {getFilteredTimelineEvents(person.name).map(event => ( // Pass person.name
+                  <div
+                    key={event.id}
                     className={`timeline-event ${selectedEvent?.id === event.id ? 'selected' : ''} ${deleteMode ? 'delete-mode' : ''}`}
                     style={{
-                      left: `${(new Date(event.startDateTime).getHours() * 60 + new Date(event.startDateTime).getMinutes()) * (100/60)}px`,
-                      width: `${(new Date(event.endDateTime) - new Date(event.startDateTime)) / (1000 * 60) * (100/60)}px`
+                      left: `${(new Date(event.startDateTime).getHours() * 60 + new Date(event.startDateTime).getMinutes()) * (100 / 60)}px`,
+                      width: `${(new Date(event.endDateTime) - new Date(event.startDateTime)) / (1000 * 60) * (100 / 60)}px`
                     }}
                     onClick={() => {
                       if (deleteMode) {
-                        handleDeleteEvent(event.id, person);
+                        handleDeleteEvent(event.id, person.name); // Pass person.name
                       } else {
                         handleEventClick(event);
                       }
                     }}
                     draggable={!deleteMode}
-                    onDragStart={(e) => handleDragStart(e, {...event, person})}
+                    onDragStart={(e) => handleDragStart(e, { ...event, person: person.name })} // Pass person.name
                   >
                     <div className="event-content">
                       <h3>{event.title}</h3>
                       <p>
-                        {new Date(event.startDateTime).toLocaleTimeString()} - 
-                        {new Date(event.endDateTime).toLocaleTimeString()}
+                        {new Date(event.startDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -
+                        {new Date(event.endDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>
@@ -726,4 +800,3 @@ const ScheduleTimeLine = () => {
 };
 
 export default ScheduleTimeLine;
-

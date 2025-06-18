@@ -73,7 +73,13 @@
   color: white;
 }
 
-.proceeding-form-container,
+.proceeding-form-container{
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+}
 .proceeding-details {
   flex: 1;
   max-width: 500px;
@@ -96,6 +102,13 @@
   margin-top: 15px;
 }
 
+.register-people-section {
+  border: 1px solid #ddd;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 15px;
+}
+
 .participant-buttons {
   display: flex;
   gap: 10px;
@@ -103,6 +116,15 @@
 }
 
 .add-participant-btn {
+  padding: 8px 12px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.register-participant-btn {
   padding: 8px 12px;
   background-color: #6c757d;
   color: white;
